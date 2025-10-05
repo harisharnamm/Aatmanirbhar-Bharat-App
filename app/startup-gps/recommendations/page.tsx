@@ -3,42 +3,62 @@
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { RecommendationCard } from "@/components/startup-gps/recommendation-card"
-import { ArrowLeft, Download, Share2, Loader2 } from "lucide-react"
+import { ArrowLeft, Download, Share2, Loader2, CheckCircle, ChevronRight, ChevronLeft, Sparkles, Building2, Banknote, FileText, GraduationCap, Calculator, MapPin } from "lucide-react"
 import Link from "next/link"
 
 type Recommendations = {
+  userProfile?: {
+    education?: string
+    capital?: string
+    state?: string
+    district?: string
+    experience?: string
+    targetMarket?: string
+    timeline?: string
+    challenges?: string[]
+  }
   schemes: Array<{
     name: string
     description: string
-    eligibility: string
-    benefits: string
+    eligibility?: string
+    benefits?: string
     applyUrl?: string
+    whyChosen: string
   }>
   banks: Array<{
     name: string
     loanType: string
-    interestRate: string
-    maxAmount: string
-    requirements: string
+    interestRate?: string
+    maxAmount?: string
+    requirements?: string
+    whyChosen: string
   }>
   licenses: Array<{
     name: string
     description: string
-    authority: string
-    estimatedTime: string
+    authority?: string
+    estimatedTime?: string
+    whyChosen: string
   }>
   training: Array<{
     program: string
-    provider: string
-    duration: string
-    cost: string
+    provider?: string
+    duration?: string
+    cost?: string
+    whyChosen: string
   }>
   budget: {
     initialInvestment: string
-    monthlyExpenses: string
-    breakEvenPeriod: string
+    monthlyExpenses?: string
+    breakEvenPeriod?: string
     projectedROI: string
+    financialProjections?: {
+      baseCase?: string
+      optimisticCase?: string
+      pessimisticCase?: string
+      sensitivityAnalysis?: string[]
+      riskFactors?: string[]
+    }
   }
   nextSteps: string[]
 }
@@ -52,21 +72,42 @@ export default function RecommendationsPage() {
   const [recommendations, setRecommendations] = useState<Recommendations | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [completedSteps, setCompletedSteps] = useState<number[]>([])
+
+  const steps = [
+    { id: 0, title: "Government Schemes", icon: Building2, color: "bg-blue-500", description: "Financial assistance programs" },
+    { id: 1, title: "Banking Options", icon: Banknote, color: "bg-green-500", description: "Loans and financing" },
+    { id: 2, title: "Required Licenses", icon: FileText, color: "bg-purple-500", description: "Legal requirements" },
+    { id: 3, title: "Training Programs", icon: GraduationCap, color: "bg-orange-500", description: "Skill development" },
+    { id: 4, title: "Budget Planning", icon: Calculator, color: "bg-indigo-500", description: "Financial projections" },
+    { id: 5, title: "Next Steps", icon: MapPin, color: "bg-pink-500", description: "Action plan" },
+  ]
 
   useEffect(() => {
     async function fetchRecommendations() {
       try {
+        // Get context from sessionStorage if not in URL params
+        const contextData = context || sessionStorage.getItem('recommendationContext') || ''
+        
         const response = await fetch("/api/startup-gps/recommendations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sector, context }),
+          body: JSON.stringify({ 
+            sector, 
+            context: contextData
+          }),
         })
 
-        if (!response.ok) throw new Error("Failed to generate recommendations")
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.details || "Failed to generate recommendations")
+        }
 
         const data = await response.json()
         setRecommendations(data)
       } catch (err) {
+        console.error("Error fetching recommendations:", err)
         setError(err instanceof Error ? err.message : "An error occurred")
       } finally {
         setLoading(false)
@@ -76,16 +117,32 @@ export default function RecommendationsPage() {
     fetchRecommendations()
   }, [sector, context])
 
+  const handleStepComplete = () => {
+    if (!completedSteps.includes(currentStep)) {
+      setCompletedSteps(prev => [...prev, currentStep])
+    }
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(prev => prev + 1)
+    }
+  }
+
+  const handlePreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1)
+    }
+  }
+
+  const handleStepClick = (stepId: number) => {
+    setCurrentStep(stepId)
+  }
+
   const handleShare = async () => {
     if (navigator.share) {
       await navigator.share({
         title: "My Startup GPS Recommendations",
-        text: `Personalized business recommendations for ${sector}`,
+        text: `Check out my personalized business roadmap for ${sector} sector!`,
         url: window.location.href,
       })
-    } else {
-      await navigator.clipboard.writeText(window.location.href)
-      alert("Link copied to clipboard!")
     }
   }
 
@@ -97,21 +154,19 @@ STARTUP GPS - Your Personalized Business Roadmap
 Sector: ${sector}
 
 GOVERNMENT SCHEMES
-${recommendations.schemes.map((s) => `• ${s.name}\n  ${s.description}\n  Eligibility: ${s.eligibility}\n`).join("\n")}
+${recommendations.schemes.map((s) => `• ${s.name}\n  ${s.description}\n  Why chosen: ${s.whyChosen}\n`).join("\n")}
 
 FINANCING OPTIONS
-${recommendations.banks.map((b) => `• ${b.name} - ${b.loanType}\n  Interest: ${b.interestRate} | Max: ${b.maxAmount}\n`).join("\n")}
+${recommendations.banks.map((b) => `• ${b.name} - ${b.loanType}\n  Why chosen: ${b.whyChosen}\n`).join("\n")}
 
 REQUIRED LICENSES
-${recommendations.licenses.map((l) => `• ${l.name} (${l.authority})\n  ${l.description}\n`).join("\n")}
+${recommendations.licenses.map((l) => `• ${l.name}\n  ${l.description}\n  Why required: ${l.whyChosen}\n`).join("\n")}
 
 TRAINING PROGRAMS
-${recommendations.training.map((t) => `• ${t.program} by ${t.provider}\n  Duration: ${t.duration} | Cost: ${t.cost}\n`).join("\n")}
+${recommendations.training.map((t) => `• ${t.program}\n  Why recommended: ${t.whyChosen}\n`).join("\n")}
 
 BUDGET ESTIMATES
 Initial Investment: ${recommendations.budget.initialInvestment}
-Monthly Expenses: ${recommendations.budget.monthlyExpenses}
-Break-even Period: ${recommendations.budget.breakEvenPeriod}
 Projected ROI: ${recommendations.budget.projectedROI}
 
 NEXT STEPS
@@ -129,192 +184,412 @@ ${recommendations.nextSteps.map((step, i) => `${i + 1}. ${step}`).join("\n")}
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/20">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Generating Your Personalized Roadmap</h2>
-          <p className="text-muted-foreground">Analyzing schemes, funding options, and opportunities...</p>
+          <div className="relative">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
+            <Sparkles className="absolute inset-0 m-auto h-6 w-6 animate-pulse text-primary" />
+          </div>
+          <h2 className="mt-4 text-xl font-semibold">Crafting Your Roadmap</h2>
+          <p className="mt-2 text-muted-foreground">Analyzing your profile and generating personalized recommendations...</p>
         </div>
       </div>
     )
   }
 
-  if (error || !recommendations) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-xl font-semibold mb-2">Unable to Generate Recommendations</h2>
-          <p className="text-muted-foreground mb-4">{error || "Please try again"}</p>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/20">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+            <Sparkles className="h-8 w-8 text-destructive" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold text-destructive">Oops! Something went wrong</h1>
+          <p className="mb-6 text-muted-foreground">{error}</p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/startup-gps">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-lg font-semibold">Your Personalized Roadmap</h1>
-                <p className="text-sm text-muted-foreground capitalize">{sector} Business</p>
+  if (!recommendations) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/20">
+        <div className="text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <Sparkles className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h1 className="mb-2 text-2xl font-bold">No Recommendations</h1>
+          <p className="mb-6 text-muted-foreground">Unable to generate recommendations.</p>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const renderStepContent = () => {
+    const currentStepData = steps[currentStep]
+    const Icon = currentStepData.icon
+
+    switch (currentStep) {
+      case 0: // Schemes
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="space-y-6">
+              {recommendations.schemes.map((scheme, index) => (
+                <div key={index} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                      <Building2 className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-3">{scheme.name}</h3>
+                      <p className="text-muted-foreground mb-4 leading-relaxed">{scheme.description}</p>
+                      <div className="rounded-lg bg-blue-50 p-4 border-l-4 border-blue-500">
+                        <p className="text-sm font-medium text-blue-700 leading-relaxed">
+                          <strong>Why this scheme:</strong> {scheme.whyChosen}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 1: // Banks
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="space-y-6">
+              {recommendations.banks.map((bank, index) => (
+                <div key={index} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                      <Banknote className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-3">{bank.name}</h3>
+                      <p className="text-muted-foreground mb-4 leading-relaxed">{bank.loanType}</p>
+                      <div className="rounded-lg bg-green-50 p-4 border-l-4 border-green-500">
+                        <p className="text-sm font-medium text-green-700 leading-relaxed">
+                          <strong>Why this option:</strong> {bank.whyChosen}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 2: // Licenses
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="space-y-6">
+              {recommendations.licenses.map((license, index) => (
+                <div key={index} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-purple-600 flex-shrink-0">
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-3">{license.name}</h3>
+                      <p className="text-muted-foreground mb-4 leading-relaxed">{license.description}</p>
+                      <div className="rounded-lg bg-purple-50 p-4 border-l-4 border-purple-500">
+                        <p className="text-sm font-medium text-purple-700 leading-relaxed">
+                          <strong>Why required:</strong> {license.whyChosen}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 3: // Training
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="space-y-6">
+              {recommendations.training.map((program, index) => (
+                <div key={index} className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600 flex-shrink-0">
+                      <GraduationCap className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg mb-4">{program.program}</h3>
+                      <div className="rounded-lg bg-orange-50 p-4 border-l-4 border-orange-500">
+                        <p className="text-sm font-medium text-orange-700 leading-relaxed">
+                          <strong>Why recommended:</strong> {program.whyChosen}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 4: // Budget
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 flex-shrink-0">
+                    <Calculator className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Initial Investment</h3>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-primary">{recommendations.budget.initialInvestment}</p>
+              </div>
+              <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-semibold text-lg">Projected ROI</h3>
+                </div>
+                <p className="text-2xl sm:text-3xl font-bold text-primary">{recommendations.budget.projectedROI}</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleShare}>
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
+            {recommendations.budget.monthlyExpenses && (
+              <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                <h3 className="font-semibold text-lg mb-4">Monthly Expenses</h3>
+                <p className="text-xl sm:text-2xl font-bold">{recommendations.budget.monthlyExpenses}</p>
+              </div>
+            )}
+            {recommendations.budget.breakEvenPeriod && (
+              <div className="rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                <h3 className="font-semibold text-lg mb-4">Break-even Period</h3>
+                <p className="text-xl sm:text-2xl font-bold">{recommendations.budget.breakEvenPeriod}</p>
+              </div>
+            )}
+          </div>
+        )
+
+      case 5: // Next Steps
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${currentStepData.color}`}>
+                <Icon className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">{currentStepData.title}</h2>
+              <p className="text-muted-foreground">{currentStepData.description}</p>
+            </div>
+            <div className="space-y-6">
+              {recommendations.nextSteps.map((step, index) => (
+                <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-4 rounded-xl border bg-card p-4 sm:p-6 shadow-sm">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 text-pink-600 font-bold flex-shrink-0">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base leading-relaxed">{step}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/20">
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 py-6">
+          {/* Mobile-first responsive layout */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Left section with back button and title */}
+            <div className="flex items-center gap-4">
+              <Link href="/startup-gps/chat">
+                <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
+              <div className="flex-1">
+                <h1 className="text-lg sm:text-xl font-semibold">Your Business Roadmap</h1>
+                <p className="text-sm capitalize text-muted-foreground">{sector.replace("-", " ")} Business</p>
+              </div>
+            </div>
+            
+            {/* Right section with action buttons */}
+            <div className="flex gap-3 sm:gap-2">
+              <Button variant="outline" size="sm" onClick={handleShare} className="flex-1 sm:flex-none">
+                <Share2 className="mr-2 h-4 w-4" />
+                <span className="hidden xs:inline">Share</span>
+                <span className="xs:hidden">Share</span>
               </Button>
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
+              <Button variant="outline" size="sm" onClick={handleDownload} className="flex-1 sm:flex-none">
+                <Download className="mr-2 h-4 w-4" />
+                <span className="hidden xs:inline">Export</span>
+                <span className="xs:hidden">Export</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="space-y-8">
-          {/* Government Schemes */}
-          <RecommendationCard
-            title="Government Schemes You Qualify For"
-            description="Financial assistance and support programs"
-            items={recommendations.schemes.map((scheme) => ({
-              title: scheme.name,
-              content: (
-                <div className="space-y-2">
-                  <p className="text-sm">{scheme.description}</p>
-                  <p className="text-sm text-muted-foreground">
-                    <strong>Eligibility:</strong> {scheme.eligibility}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    <strong>Benefits:</strong> {scheme.benefits}
-                  </p>
-                </div>
-              ),
-            }))}
-          />
-
-          {/* Banks & Financing */}
-          <RecommendationCard
-            title="Financing Options"
-            description="Banks and loan products for your business"
-            items={recommendations.banks.map((bank) => ({
-              title: `${bank.name} - ${bank.loanType}`,
-              content: (
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <strong>Interest Rate:</strong> {bank.interestRate}
-                  </p>
-                  <p>
-                    <strong>Maximum Amount:</strong> {bank.maxAmount}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <strong>Requirements:</strong> {bank.requirements}
-                  </p>
-                </div>
-              ),
-            }))}
-          />
-
-          {/* Licenses */}
-          <RecommendationCard
-            title="Required Licenses & Registrations"
-            description="Legal requirements to start your business"
-            items={recommendations.licenses.map((license) => ({
-              title: license.name,
-              content: (
-                <div className="space-y-1 text-sm">
-                  <p>{license.description}</p>
-                  <p className="text-muted-foreground">
-                    <strong>Authority:</strong> {license.authority}
-                  </p>
-                  <p className="text-muted-foreground">
-                    <strong>Processing Time:</strong> {license.estimatedTime}
-                  </p>
-                </div>
-              ),
-            }))}
-          />
-
-          {/* Training */}
-          <RecommendationCard
-            title="Training & Skill Development"
-            description="Programs to enhance your business skills"
-            items={recommendations.training.map((program) => ({
-              title: program.program,
-              content: (
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <strong>Provider:</strong> {program.provider}
-                  </p>
-                  <p>
-                    <strong>Duration:</strong> {program.duration}
-                  </p>
-                  <p>
-                    <strong>Cost:</strong> {program.cost}
-                  </p>
-                </div>
-              ),
-            }))}
-          />
-
-          {/* Budget */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Budget Estimates</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Initial Investment</p>
-                <p className="text-lg font-semibold">{recommendations.budget.initialInvestment}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Monthly Expenses</p>
-                <p className="text-lg font-semibold">{recommendations.budget.monthlyExpenses}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Break-even Period</p>
-                <p className="text-lg font-semibold">{recommendations.budget.breakEvenPeriod}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Projected ROI</p>
-                <p className="text-lg font-semibold text-primary">{recommendations.budget.projectedROI}</p>
+      {/* Progress Indicator */}
+      <div className="border-b bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-6">
+          {/* Mobile-first progress layout */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* Step counter and progress dots */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+              <span className="text-sm font-medium">Step {currentStep + 1} of {steps.length}</span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
+                {steps.map((step) => {
+                  const Icon = step.icon
+                  const isCompleted = completedSteps.includes(step.id)
+                  const isCurrent = currentStep === step.id
+                  
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => handleStepClick(step.id)}
+                      className={`flex h-10 w-10 items-center justify-center rounded-full transition-all touch-manipulation ${
+                        isCompleted
+                          ? `${step.color} text-white`
+                          : isCurrent
+                          ? `border-2 ${step.color.replace('bg-', 'border-')} bg-white text-${step.color.replace('bg-', '')}`
+                          : 'border border-muted-foreground/30 bg-muted/50 text-muted-foreground'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-          </div>
-
-          {/* Next Steps */}
-          <div className="bg-accent/10 border border-accent/20 rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Your Next Steps</h2>
-            <ol className="space-y-3">
-              {recommendations.nextSteps.map((step, index) => (
-                <li key={index} className="flex gap-3">
-                  <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-accent text-accent-foreground text-sm font-semibold">
-                    {index + 1}
-                  </span>
-                  <span className="pt-0.5">{step}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          {/* CTA */}
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Ready to start a different business?</p>
-            <Link href="/startup-gps">
-              <Button variant="outline">Explore Other Sectors</Button>
-            </Link>
+            
+            {/* Progress percentage */}
+            <div className="text-center sm:text-right">
+              <span className="text-sm text-muted-foreground">
+                {Math.round(((currentStep + 1) / steps.length) * 100)}% Complete
+              </span>
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="rounded-2xl border bg-card p-6 sm:p-8 shadow-lg">
+          {renderStepContent()}
+        </div>
+
+        {/* Navigation */}
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Button
+            variant="outline"
+            onClick={handlePreviousStep}
+            disabled={currentStep === 0}
+            className="flex items-center gap-2 h-12 px-6"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Button>
+
+          <div className="flex items-center justify-center gap-2">
+            {completedSteps.includes(currentStep) && (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">Completed</span>
+              </div>
+            )}
+          </div>
+
+          {currentStep < steps.length - 1 ? (
+            <Button
+              onClick={handleStepComplete}
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary/80 h-12 px-6"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleStepComplete}
+              className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 h-12 px-6"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Complete Roadmap
+            </Button>
+          )}
+        </div>
+
+        {/* Final CTA - Show when all steps completed */}
+        {completedSteps.length === steps.length && (
+          <div className="mt-8 rounded-xl border bg-gradient-to-br from-primary/5 to-accent/5 p-6 sm:p-8 text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-500">
+              <CheckCircle className="h-8 w-8 text-white" />
+            </div>
+            <h3 className="mb-4 text-xl sm:text-2xl font-bold">🎉 Congratulations!</h3>
+            <p className="mb-8 text-muted-foreground max-w-md mx-auto">
+              You've completed your personalized roadmap for starting a {sector.replace("-", " ")} business.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+              <Button size="lg" onClick={handleShare} className="bg-gradient-to-r from-primary to-primary/80 h-12">
+                <Share2 className="mr-2 h-4 w-4" />
+                Share My Roadmap
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleDownload} className="h-12">
+                <Download className="mr-2 h-4 w-4" />
+                Export as PDF
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

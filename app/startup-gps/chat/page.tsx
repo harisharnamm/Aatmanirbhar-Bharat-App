@@ -133,14 +133,18 @@ export default function ChatPage() {
     setInputValue(transcript)
   }
 
-  const handleGenerateRecommendations = () => {
+  const handleGenerateRecommendations = async () => {
     // Store conversation context and navigate to recommendations
     const conversationSummary = messages
       .filter((m) => m.role === "user")
       .map((m) => m.parts?.find((p) => p.type === "text")?.text || "")
       .join(" | ")
 
-    router.push(`/startup-gps/recommendations?sector=${sector}&context=${encodeURIComponent(conversationSummary)}`)
+    // Store the context in sessionStorage to avoid URL length issues
+    sessionStorage.setItem('recommendationContext', conversationSummary)
+    
+    // Navigate to recommendations page with just the sector
+    router.push(`/startup-gps/recommendations?sector=${sector}`)
   }
 
   return (

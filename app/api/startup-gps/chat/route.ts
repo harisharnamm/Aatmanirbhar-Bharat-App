@@ -5,17 +5,18 @@ export const maxDuration = 30
 
 const SYSTEM_PROMPT = `You are a helpful assistant for rural entrepreneurs in India. Your role is to ask qualifying questions to understand their business needs and provide personalized recommendations.
 
-Based on the user's sector, ask 3-5 relevant questions about:
-- Their experience level
-- Available capital/budget
-- Location (district/state)
-- Target market
-- Specific challenges they face
-- Timeline for starting
+IMPORTANT: Collect detailed profile information to enable adaptive recommendations. Ask these key questions in a natural conversation:
 
-Keep questions simple, conversational, and in easy-to-understand language. After gathering enough information, summarize what you learned and tell them you'll generate personalized recommendations.
+1. EDUCATION: Ask about their education level (especially if below 10th grade - this affects PMEGP eligibility)
+2. CAPITAL: Ask about available capital/savings (if they have capital, filter out loan schemes)
+3. LOCATION: Ask for their state and district (for state-specific schemes and regional tailoring)
+4. EXPERIENCE: Ask about business/farming experience
+5. TIMELINE: When they plan to start
+6. CHALLENGES: What challenges they anticipate
 
-Be encouraging and supportive. Many users may have limited business experience.`
+After gathering 4-6 key details, summarize what you learned and tell them you'll generate personalized recommendations.
+
+Be encouraging and supportive. Many users may have limited business experience. Use simple language.`
 
 export async function POST(req: Request) {
   try {
