@@ -184,14 +184,14 @@ ${recommendations.nextSteps.map((step, i) => `${i + 1}. ${step}`).join("\n")}
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/20">
-        <div className="text-center">
-          <div className="relative">
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-background to-muted/20 z-50">
+        <div className="w-full max-w-sm px-6 text-center">
+          <div className="relative mx-auto mb-6 flex h-16 w-16 items-center justify-center">
             <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/20 border-t-primary"></div>
             <Sparkles className="absolute inset-0 m-auto h-6 w-6 animate-pulse text-primary" />
           </div>
-          <h2 className="mt-4 text-xl font-semibold">Crafting Your Roadmap</h2>
-          <p className="mt-2 text-muted-foreground">Analyzing your profile and generating personalized recommendations...</p>
+          <h2 className="mb-3 text-xl font-semibold">Crafting Your Roadmap</h2>
+          <p className="text-muted-foreground">Analyzing your profile and generating personalized recommendations...</p>
         </div>
       </div>
     )
